@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>RRModelingSystem</RootNamespace>
     <AssemblyName>RRModelingSystem</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
@@ -253,6 +253,10 @@
     <ProjectReference Include="..\MWC_MODSIM\MWC_MODSIMUtils.csproj">
       <Project>{934db78e-6254-4053-9fa4-29e39c00e6d1}</Project>
       <Name>MWC_MODSIMUtils</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\MWC_MS_GSF_Run\MWC_MS_GSF_Run.csproj">
+      <Project>{22ce6d91-a70b-42c8-900e-1ab61c802ad2}</Project>
+      <Name>MWC_MS_GSF_Run</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
