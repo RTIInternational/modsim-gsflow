@@ -13,12 +13,18 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
         private DataTable dataTbl;
         private Dictionary<string, Node> minNodesCollection;
         private double accuracyFactor;
+        private DataTable storageThresholdsTbl;
+        public int currentHydrologicIndex;
 
-        public MinFlowCalculator(string DBSource,string tableName, ref Model m_Model)
+        public MinFlowCalculator(string DBSource,string tableName, ref Model m_Model, string storageThresholdsTable = "")
         {
             MyDBSqlite m_DB = new MyDBSqlite(DBSource);
             dataTbl = m_DB.GetTableFromDB($"SELECT * FROM {tableName}",tableName);
             accuracyFactor = m_Model.ScaleFactor;
+            if (!string.IsNullOrEmpty(storageThresholdsTable))
+            {
+                storageThresholdsTbl = m_DB.GetTableFromDB($"SELECT * FROM {storageThresholdsTable}", storageThresholdsTable);
+            }
 
             //Get the Minimum flows Nodes
         Node m_MinNode;
@@ -53,7 +59,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
                     DateTime m_Date = thisDate.AddDays(i);
                     DataRow[] drs = dataTbl.Select($"Node = '{node.name}' AND Month = {m_Date.Month} AND [Day] = {m_Date.Day}");
                     if (drs.Length == 0)
-                        drs = dataTbl.Select($"Node = '{node.name}' AND Month = {m_Date.Month} AND [Day]< {m_Date.Day}", "Day DESC");
+                        drs = dataTbl.Select($"Node = '{node.name}' AND (Month < {m_Date.Month} OR (Month = {m_Date.Month} AND [Day] < {m_Date.Day}))", "Month DESC, Day DESC");
                     if (drs.Length >= 1)
                     {
                         long minFlow = long.Parse(drs[0][stateCol].ToString());
@@ -131,6 +137,40 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
                 storageState = 3;
 
             return storageState;
+        }
+
+        // Three schedule storage thresholds for minimum flow calculations. 
+        internal int GetStorageState_3Sch(Model m_Model, long LMendocinoStor)
+        {
+            DateTime myDate = m_Model.TimeStepManager.Index2Date(m_Model.mInfo.CurrentModelTimeStepIndex, TypeIndexes.ModelIndex);
+            int mon = myDate.Month;
+            int day = myDate.Day;
+
+            DataRow[] thresholdRows = storageThresholdsTbl.Select($"Month = {mon} AND Day = {day}");
+
+            // if today is not an evaluation date, but index is uninitiailed, find most recent threshold
+            if (thresholdRows.Length == 0 && currentHydrologicIndex == 0)
+            {
+                // sort descending so the most recent calendar date in the current year is placed first
+                thresholdRows = storageThresholdsTbl.Select($"Month < {mon} OR (Month = {mon} and Day < {day})", "Month DESC, Day DESC");
+            }
+
+            // calculate the threshold if it's an evaluation date
+            if (thresholdRows.Length > 0)
+            {
+                double currentLMStorage = LMendocinoStor / m_Model.ScaleFactor;
+                double storageCritical = double.Parse(thresholdRows[0]["Critical"].ToString());
+                double storageDry = double.Parse(thresholdRows[0]["Dry"].ToString());
+
+                if (currentLMStorage < storageCritical)
+                    currentHydrologicIndex = 3;
+                else if (currentLMStorage < storageDry)
+                    currentHydrologicIndex = 2;
+                else
+                    currentHydrologicIndex = 1;
+            }
+
+            return currentHydrologicIndex;
         }
     }
 }

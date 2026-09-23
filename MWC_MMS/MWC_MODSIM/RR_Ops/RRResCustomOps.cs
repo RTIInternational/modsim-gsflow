@@ -77,7 +77,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
         private  void OnInitialize()
         {
             //min release clases
-            LMendoMinFlow = new MinFlowCalculator(dataDBPath, "Mendo_MinFlow_1610QTUCP", ref m_Model);
+            LMendoMinFlow = new MinFlowCalculator(dataDBPath, "Mendo_MinFlow_3Sch", ref m_Model, "Mendo_Storage_Thresholds");
             LMendocino = m_Model.FindNode("LMendocino");
             LSonoma = m_Model.FindNode("LSonoma");
             pillsburyIndex = m_Model.FindLink("PillsburyIndex");
@@ -114,19 +114,30 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
                 //Set operation flows -
                 
                 int YearTypeFlag = (int)(pillsburyIndex.mlInfo.flow / m_Model.ScaleFactor);
-                if (YearTypeFlag == 1 || YearTypeFlag == 4)
-                {
-                    storageState = LMendoMinFlow.GetStorageState(m_Model, LMendocino.mnInfo.start, pillsburyStorage.mlInfo.flow);
-                    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, storageState.ToString(),1);
-                }
-                else if (YearTypeFlag == 2 || YearTypeFlag == 3)
-                    // YearTypeFlag: 2 & 3
-                    // Min flow table uses columns 2 and 3 to store the values per node.
-                    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, YearTypeFlag.ToString());
-                else
-                    // ETS: Is this ever reached?
-                    // Yes, the first iteration YearTypeFlag ==0 
-                    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, "1",1);
+                //if (YearTypeFlag == 1 || YearTypeFlag == 4)
+                //{
+                //    storageState = LMendoMinFlow.GetStorageState(m_Model, LMendocino.mnInfo.start, pillsburyStorage.mlInfo.flow);
+                //    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, storageState.ToString(),1);
+                //}
+                //else if (YearTypeFlag == 2 || YearTypeFlag == 3)
+                //    // YearTypeFlag: 2 & 3
+                //    // Min flow table uses columns 2 and 3 to store the values per node.
+                //    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, YearTypeFlag.ToString());
+                //else
+                //    // ETS: Is this ever reached?
+                //    // Yes, the first iteration YearTypeFlag ==0 
+                //    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, "1",1);
+                // evaluate hydrologic index
+                storageState = LMendoMinFlow.GetStorageState_3Sch(m_Model, LMendocino.mnInfo.start);
+                string effectiveMendoState =  storageState.ToString();
+
+                // check adaptive management pulse trigger
+                if (storageState == 2 && thisDate.Month == 3 && thisDate.Day >= 15 && thisDate.Day <= 30)
+                    effectiveMendoState = "1";
+
+                // assign minimum flow demands 
+                LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, effectiveMendoState, 1);
+
 
                 // L.Sonoma min flows are only a function of the YearTypeFlag.
                 SonomaMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, YearTypeFlag.ToString(),1);
