@@ -4,6 +4,7 @@ using System.Text;
 
 using Csu.Modsim.ModsimIO;
 using Csu.Modsim.ModsimModel;
+using Csu.Modsim.NetworkUtils;
 
 using System.IO;
 using System.Data;
@@ -22,6 +23,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
         private  string dataDBPath;
 
         public event ProcessMessage messageOutRun;     //event
+        private ModelOutputSupport modsimoutputsupport;
 
         public RRResCustomOps(ref Model model,string dataDBPath)
         {
@@ -71,12 +73,23 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
         private  MinFlowCalculator LMendoMinFlow;
         private  MinFlowCalculator SonomaMinFlow;
         private  int storageState=0;
+        private  int effectiveMendoState = 0;
         private  ReleaseCapacity LMendoRelease;
         private  ReleaseCapacity LSonoRelease;
 
         private  void OnInitialize()
         {
-            //min release clases
+            // custom output support
+            // storage state
+            modsimoutputsupport = m_Model.OutputSupportClass as ModelOutputSupport;
+            modsimoutputsupport.AddUserDefinedOutputVariable(m_Model, "StorageState", linkOutputVar: false, nodeOutputVar: true, "Flag");
+            modsimoutputsupport.AddUserDefinedOutputVariable(m_Model, "EffectiveMendoState", linkOutputVar: false, nodeOutputVar: true, "Flag");
+            modsimoutputsupport.AddCurrentUserReservoirOutput += AddCustomReservoirOutput;
+            //// minimum flow requirements
+            //modsimoutputsupport.AddUserDefinedOutputVariable(m_Model, "MinFlowReq_cfs", linkOutputVar: false, nodeOutputVar: true, "Flow");
+            //modsimoutputsupport.AddCurrentUserDemandOutput += AddCustomDemandOutput;
+
+            //min release classes
             LMendoMinFlow = new MinFlowCalculator(dataDBPath, "Mendo_MinFlow_3Sch", ref m_Model, "Mendo_Storage_Thresholds");
             LMendocino = m_Model.FindNode("LMendocino");
             LSonoma = m_Model.FindNode("LSonoma");
@@ -129,14 +142,14 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
                 //    LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, "1",1);
                 // evaluate hydrologic index
                 storageState = LMendoMinFlow.GetStorageState_3Sch(m_Model, LMendocino.mnInfo.start);
-                string effectiveMendoState =  storageState.ToString();
+                effectiveMendoState =  storageState;
 
                 // check adaptive management pulse trigger
                 if (storageState == 2 && thisDate.Month == 3 && thisDate.Day >= 15 && thisDate.Day <= 30)
-                    effectiveMendoState = "1";
+                    effectiveMendoState = 1;
 
                 // assign minimum flow demands 
-                LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, effectiveMendoState, 1);
+                LMendoMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, effectiveMendoState.ToString(), 1);
 
 
                 // L.Sonoma min flows are only a function of the YearTypeFlag.
@@ -167,6 +180,31 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
                 //Lake Sonoma Releases (Controlled and Uncontrolled)
                 LSonoRelease.SetReleaseCapacity(m_Model.mInfo.CurrentModelTimeStepIndex, LSonoma, interpolate: true);
 
+            }
+        }
+
+        private void AddCustomReservoirOutput(Node node, DataRow row) {
+            if (node != null && node.name == "LMendocino")
+            {
+                if (row.Table.Columns.Contains("StorageState"))
+                    row["StorageState"] = storageState;
+                if (row.Table.Columns.Contains("EffectiveMendoState"))
+                    row["EffectiveMendoState"] = effectiveMendoState;
+            }
+        }
+
+        private void AddCustomDemandOutput(Node node, DataRow row)
+        {
+            // Checks nodes managed by LMendoMinFlow or SonomaMinFlow
+            if (LMendoMinFlow.minNodesCollection.ContainsKey(node.name))
+            {
+                int t = m_Model.mInfo.CurrentModelTimeStepIndex;
+                if (node.mnInfo.nodedemand != null && node.mnInfo.nodedemand.GetLength(0) > t)
+                {
+                    // Convert acre-ft/day back to CFS: Flow_cfs = Flow_acft / (1.98347 * scaleFactor)
+                    double req_cfs = (node.mnInfo.nodedemand[t, 0] / m_Model.ScaleFactor) / 1.98347;
+                    row["MinFlowReq_cfs"] = req_cfs;
+                }
             }
         }
 

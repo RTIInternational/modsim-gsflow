@@ -11,7 +11,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
     class MinFlowCalculator 
     {
         private DataTable dataTbl;
-        private Dictionary<string, Node> minNodesCollection;
+        public Dictionary<string, Node> minNodesCollection;
         private double accuracyFactor;
         private DataTable storageThresholdsTbl;
         public int currentHydrologicIndex;
