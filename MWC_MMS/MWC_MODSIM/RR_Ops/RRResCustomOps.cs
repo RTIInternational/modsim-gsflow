@@ -96,7 +96,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
             pillsburyIndex = m_Model.FindLink("PillsburyIndex");
             pillsburyStorage = m_Model.FindLink("PillsburyStorage");
             //  L.Sonoma min flow releases 
-            SonomaMinFlow = new MinFlowCalculator(dataDBPath, "Sonoma_MinFlow_1610QTUCP", ref m_Model);
+            SonomaMinFlow = new MinFlowCalculator(dataDBPath, "Sonoma_MinFlow_3Sch", ref m_Model);
 
             //Mendocino Releases (controlled and uncontrolled)
             LMendoRelease = new ReleaseCapacity(dataDBPath, "MendocinoReleases", ref m_Model);
@@ -126,7 +126,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
 
                 //Set operation flows -
                 
-                int YearTypeFlag = (int)(pillsburyIndex.mlInfo.flow / m_Model.ScaleFactor);
+                //int YearTypeFlag = (int)(pillsburyIndex.mlInfo.flow / m_Model.ScaleFactor);
                 //if (YearTypeFlag == 1 || YearTypeFlag == 4)
                 //{
                 //    storageState = LMendoMinFlow.GetStorageState(m_Model, LMendocino.mnInfo.start, pillsburyStorage.mlInfo.flow);
@@ -153,7 +153,7 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
 
 
                 // L.Sonoma min flows are only a function of the YearTypeFlag.
-                SonomaMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, YearTypeFlag.ToString(),1);
+                SonomaMinFlow.AssignMinFlowsToNodes(m_Model.mInfo.CurrentModelTimeStepIndex, thisDate, storageState.ToString(), 1);
 
             }
 
