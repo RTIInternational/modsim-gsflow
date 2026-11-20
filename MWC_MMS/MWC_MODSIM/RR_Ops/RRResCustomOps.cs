@@ -159,8 +159,6 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
 
             if (m_Model.mInfo.Iteration > 1)
             {
-                //Mendocino Releases (Controlled and Uncontrolled)
-                LMendoRelease.SetReleaseCapacity(m_Model.mInfo.CurrentModelTimeStepIndex, LMendocino, interpolate: true);
 
                 //West Fork flow - Release Check and overwrite Mendo controlled releases
                 if ((westForkFlows != null))
@@ -176,6 +174,10 @@ namespace RTI.CWR.MODSIMUtils.RRModelOps
                             MendoContrlledRelease.mlInfo.hiVariable[m_Model.mInfo.CurrentModelTimeStepIndex, 0] = (long)Math.Round((49.5867769 * m_Model.ScaleFactor), 0);
                     }
                 }
+
+
+                //Mendocino Releases (Controlled and Uncontrolled)
+                LMendoRelease.SetReleaseCapacity(m_Model.mInfo.CurrentModelTimeStepIndex, LMendocino, interpolate: true);
 
                 //Lake Sonoma Releases (Controlled and Uncontrolled)
                 LSonoRelease.SetReleaseCapacity(m_Model.mInfo.CurrentModelTimeStepIndex, LSonoma, interpolate: true);
